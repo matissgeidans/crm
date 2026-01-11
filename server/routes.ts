@@ -216,9 +216,9 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Trip not found" });
       }
       
-      // Drivers can only edit draft trips
-      if (user?.role !== "admin" && existingTrip.status !== "draft") {
-        return res.status(403).json({ message: "Cannot edit submitted trips" });
+      // Drivers can only edit draft or submitted trips (not approved/rejected)
+      if (user?.role !== "admin" && !["draft", "submitted"].includes(existingTrip.status)) {
+        return res.status(403).json({ message: "Cannot edit processed trips" });
       }
       
       const partialTripSchema = insertTripSchema.partial();
