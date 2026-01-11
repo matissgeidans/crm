@@ -50,9 +50,11 @@ const tripFormSchema = z.object({
   isTalaRiga: z.boolean().default(false),
   isPieriga: z.boolean().default(false),
   hasRati: z.boolean().default(false),
+  ratiType: z.string().optional(),
   hasTehniskaPalidziba: z.boolean().default(false),
   hasDarbsNakti: z.boolean().default(false),
   paymentType: z.string().optional(),
+  cashAmount: z.string().optional(),
   extraCosts: z.string().optional(),
   extraCostsDescription: z.string().optional(),
   tripDate: z.string(),
@@ -100,9 +102,11 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
       isTalaRiga: trip?.isTalaRiga || false,
       isPieriga: trip?.isPieriga || false,
       hasRati: trip?.hasRati || false,
+      ratiType: trip?.ratiType || "1",
       hasTehniskaPalidziba: trip?.hasTehniskaPalidziba || false,
       hasDarbsNakti: trip?.hasDarbsNakti || false,
       paymentType: trip?.paymentType || "Skaidrā nauda",
+      cashAmount: trip?.cashAmount?.toString() || "",
       extraCosts: trip?.extraCosts?.toString() || "0.00",
       extraCostsDescription: trip?.extraCostsDescription || "",
       tripDate: trip?.tripDate
@@ -159,10 +163,16 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
     saveMutation.mutate({ ...data, status: "submitted" });
   };
 
+  const clientId = form.watch("clientId");
+  const manualClientName = form.watch("manualClientName");
+  const hasRati = form.watch("hasRati");
+  const paymentType = form.watch("paymentType");
+
   const selectedClient = activeClients.find(
-    (c) => c.id.toString() === form.watch("clientId")
+    (c) => c.id.toString() === clientId
   );
   
+  const displayClientName = selectedClient?.name || manualClientName || "-";
   const totalDistance = parseFloat(form.watch("distanceKm") || "0");
 
   const tabs: Tab[] = ["Izsaukums", "Reiss", "Papildus", "Norēķins"];
@@ -174,7 +184,7 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-bold">Jauns izsaukums</h1>
+          <h1 className="text-xl font-bold">{trip ? "Labot izsaukumu" : "Jauns izsaukums"}</h1>
           <p className="text-sm text-muted-foreground">
             Vadītājs: {driverName || "Lietotājs"} • {driverVehicle || "Nav norādīts"}
           </p>
@@ -429,28 +439,51 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
                         { id: "hasTehniskaPalidziba", label: "Tehniskā palīdzība", desc: "Sniegta tehniskā palīdzība uz vietas" },
                         { id: "hasDarbsNakti", label: "Darbs naktī", desc: "Izsaukums nakts laikā (22:00 - 06:00)" }
                       ].map((item) => (
-                        <FormField
-                          key={item.id}
-                          control={form.control}
-                          name={item.id as any}
-                          render={({ field }) => (
-                            <div className={cn(
-                              "flex items-center space-x-3 rounded-xl p-4 transition-colors cursor-pointer border",
-                              field.value ? "bg-orange-100/50 border-orange-200" : "bg-orange-50/30 border-orange-50/50"
-                            )}>
-                              <Checkbox
-                                id={item.id}
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                className="rounded-full border-orange-400 data-[state=checked]:bg-orange-500"
-                              />
-                              <div className="space-y-0.5">
-                                <Label htmlFor={item.id} className="text-slate-800 font-bold cursor-pointer">{item.label}</Label>
-                                <p className="text-xs text-slate-500">{item.desc}</p>
+                        <div key={item.id} className="space-y-2">
+                          <FormField
+                            control={form.control}
+                            name={item.id as any}
+                            render={({ field }) => (
+                              <div className={cn(
+                                "flex items-center space-x-3 rounded-xl p-4 transition-colors cursor-pointer border",
+                                field.value ? "bg-orange-100/50 border-orange-200" : "bg-orange-50/30 border-orange-50/50"
+                              )}>
+                                <Checkbox
+                                  id={item.id}
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="rounded-full border-orange-400 data-[state=checked]:bg-orange-500"
+                                />
+                                <div className="space-y-0.5">
+                                  <Label htmlFor={item.id} className="text-slate-800 font-bold cursor-pointer">{item.label}</Label>
+                                  <p className="text-xs text-slate-500">{item.desc}</p>
+                                </div>
                               </div>
+                            )}
+                          />
+                          {item.id === "hasRati" && hasRati && (
+                            <div className="pl-6 pt-2">
+                              <FormField
+                                control={form.control}
+                                name="ratiType"
+                                render={({ field }) => (
+                                  <RadioGroup
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                    className="flex gap-4"
+                                  >
+                                    {["1", "2", "3", "4"].map((val) => (
+                                      <div key={val} className="flex items-center space-x-2">
+                                        <RadioGroupItem value={val} id={`rati-${val}`} className="border-orange-400 text-orange-500" />
+                                        <Label htmlFor={`rati-${val}`} className="text-slate-600 font-bold">{val}</Label>
+                                      </div>
+                                    ))}
+                                  </RadioGroup>
+                                )}
+                              />
                             </div>
                           )}
-                        />
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -550,6 +583,22 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
                     )}
                   />
 
+                  {paymentType === "Skaidrā nauda" && (
+                    <FormField
+                      control={form.control}
+                      name="cashAmount"
+                      render={({ field }) => (
+                        <FormItem className="animate-in fade-in slide-in-from-top-4">
+                          <FormLabel className="text-slate-600 font-semibold">Skaidras naudas summa (€)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="0.00" {...field} className="rounded-xl border-slate-100 bg-slate-50/50 h-14 text-lg font-bold" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
                   <FormField
                     control={form.control}
                     name="paymentNotes"
@@ -572,7 +621,7 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 font-medium">Klients:</span>
-                        <span className="text-slate-800 font-bold">{selectedClient?.name || "-"}</span>
+                        <span className="text-slate-800 font-bold">{displayClientName}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 font-medium">Attālums:</span>
@@ -604,21 +653,13 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
                   ) : (
                     <Send className="mr-2 h-5 w-5" />
                   )}
-                  Iesniegt
+                  {trip ? "Saglabāt izmaiņas" : "Iesniegt"}
                 </Button>
               </div>
             </form>
           </Form>
         </CardContent>
       </Card>
-      
-      {/* Secondary Button to launch modal (optional based on designs) */}
-      <div className="fixed bottom-10 right-10">
-        <Button className="rounded-full h-14 px-8 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-xl shadow-orange-200 flex items-center gap-2">
-          <PlusCircle className="h-5 w-5" />
-          Jauns izsaukums
-        </Button>
-      </div>
     </div>
   );
 }

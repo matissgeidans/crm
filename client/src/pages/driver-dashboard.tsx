@@ -12,7 +12,7 @@ import {
   MapPin,
   Clock,
   CreditCard,
-  HandHelping
+  Edit2
 } from "lucide-react";
 import type { TripWithRelations } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,8 @@ export default function DriverDashboard() {
     queryKey: ["/api/trips"],
   });
 
-  const handleEditTrip = (trip: TripWithRelations) => {
+  const handleEditTrip = (trip: TripWithRelations, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedTrip(trip);
     setShowForm(true);
   };
@@ -75,13 +76,15 @@ export default function DriverDashboard() {
             {new Date().toLocaleDateString("lv-LV", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
-        <Button 
-          onClick={handleNewTrip} 
-          className="rounded-full h-12 px-6 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg shadow-orange-100"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Jauns izsaukums
-        </Button>
+        <div className="flex gap-4">
+          <Button 
+            onClick={handleNewTrip} 
+            className="rounded-full h-12 px-6 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg shadow-orange-100"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Jauns izsaukums
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -126,7 +129,7 @@ export default function DriverDashboard() {
             trips.map((trip) => (
               <Card 
                 key={trip.id} 
-                className="group border-none shadow-sm rounded-3xl hover:shadow-md transition-all cursor-pointer bg-white"
+                className="group border-none shadow-sm rounded-3xl hover:shadow-md transition-all cursor-pointer bg-white relative"
                 onClick={() => setViewTrip(trip)}
               >
                 <CardContent className="p-6 space-y-6">
@@ -136,7 +139,7 @@ export default function DriverDashboard() {
                         <Truck className="h-6 w-6 text-white" />
                       </div>
                       <div className="space-y-0.5">
-                        <h4 className="font-black text-slate-800 truncate max-w-[150px]">
+                        <h4 className="font-black text-slate-800 truncate max-w-[120px]">
                           {trip.client?.name || trip.manualClientName || "Klients"}
                         </h4>
                         <p className="text-xs text-slate-400 font-bold">
@@ -144,12 +147,24 @@ export default function DriverDashboard() {
                         </p>
                       </div>
                     </div>
-                    <Badge className={cn(
-                      "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider",
-                      trip.status === "approved" ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-orange-50 text-orange-600 hover:bg-orange-100"
-                    )}>
-                      {trip.status === "approved" ? "Apstiprināts" : "Iesniegts"}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge className={cn(
+                        "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider",
+                        trip.status === "approved" ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-orange-50 text-orange-600 hover:bg-orange-100"
+                      )}>
+                        {trip.status === "approved" ? "Apstiprināts" : "Iesniegts"}
+                      </Badge>
+                      {(trip.status === "draft" || trip.status === "submitted") && (
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-8 w-8 rounded-full hover:bg-orange-50 text-slate-400 hover:text-orange-500"
+                          onClick={(e) => handleEditTrip(trip, e)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -190,9 +205,9 @@ export default function DriverDashboard() {
                         <CreditCard className="h-3 w-3" /> {trip.paymentType}
                       </Badge>
                     )}
-                    {trip.status === "approved" && (
+                    {(trip.status === "approved" || trip.paymentType === "Skaidrā nauda") && (
                       <Badge variant="outline" className="rounded-xl bg-emerald-50 border-emerald-100 text-emerald-600 font-bold px-3 py-1.5">
-                        Skaidra: {trip.costCalculated} €
+                        {trip.cashAmount || trip.costCalculated} €
                       </Badge>
                     )}
                   </div>

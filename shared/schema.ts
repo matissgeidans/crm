@@ -79,10 +79,12 @@ export const trips = pgTable("trips", {
   isPieriga: boolean("is_pieriga").default(false),
   
   hasRati: boolean("has_rati").default(false),
+  ratiType: varchar("rati_type", { length: 10 }), // 1, 2, 3, 4
   hasTehniskaPalidziba: boolean("has_tehniska_palidziba").default(false),
   hasDarbsNakti: boolean("has_darbs_nakti").default(false),
   
   paymentType: varchar("payment_type", { length: 50 }),
+  cashAmount: decimal("cash_amount", { precision: 10, scale: 2 }), // Skaidras naudas summa
   
   extraCosts: decimal("extra_costs", { precision: 10, scale: 2 }),
   extraCostsDescription: text("extra_costs_description"),
@@ -95,7 +97,7 @@ export const trips = pgTable("trips", {
   adminNotes: text("admin_notes"),
   costCalculated: decimal("cost_calculated", { precision: 10, scale: 2 }),
   
-  attachments: jsonb("attachments").default([]),
+  attachments: jsonb("attachments").default(sql`'[]'::jsonb`),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
