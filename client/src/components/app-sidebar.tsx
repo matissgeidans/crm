@@ -1,132 +1,87 @@
-import { useLocation, Link } from "wouter";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Truck,
-  LayoutDashboard,
-  ClipboardList,
-  Users,
-  BarChart3,
-  Settings,
+import { Link, useLocation } from "wouter";
+import { 
+  LayoutDashboard, 
+  Users, 
+  FileText, 
+  BarChart3, 
+  Settings, 
   LogOut,
-  ChevronUp,
-  Plus,
+  Truck
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
-  const { user, isAdmin, isDriver } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [location] = useLocation();
 
-  const driverMenuItems = [
+  const menuItems = [
     {
-      title: "Dashboard",
+      title: "Panelis",
       url: "/",
       icon: LayoutDashboard,
+      roles: ["driver", "admin"],
     },
     {
-      title: "New Trip",
-      url: "/trips/new",
-      icon: Plus,
-    },
-    {
-      title: "My Trips",
+      title: "Ziņojumi",
       url: "/trips",
-      icon: ClipboardList,
-    },
-  ];
-
-  const adminMenuItems = [
-    {
-      title: "Dashboard",
-      url: "/",
-      icon: LayoutDashboard,
+      icon: FileText,
+      roles: ["driver", "admin"],
     },
     {
-      title: "All Reports",
-      url: "/reports",
-      icon: ClipboardList,
-    },
-    {
-      title: "Clients",
+      title: "Klients",
       url: "/clients",
       icon: Users,
+      roles: ["admin"],
     },
     {
-      title: "Analytics",
+      title: "Analītika",
       url: "/analytics",
       icon: BarChart3,
+      roles: ["admin"],
+    },
+    {
+      title: "Iestatījumi",
+      url: "/settings",
+      icon: Settings,
+      roles: ["driver", "admin"],
     },
   ];
 
-  const menuItems = isAdmin ? adminMenuItems : driverMenuItems;
-
-  const getUserInitials = () => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return "U";
-  };
-
-  const getUserDisplayName = () => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    }
-    if (user?.firstName) {
-      return user.firstName;
-    }
-    return user?.email || "User";
-  };
+  const filteredItems = menuItems.filter((item) => 
+    item.roles.includes(user?.role || "driver")
+  );
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-2 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-            <Truck className="h-4 w-4 text-primary-foreground" />
+    <Sidebar className="border-r border-slate-100 bg-white">
+      <SidebarHeader className="p-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-orange-500 p-2.5 rounded-2xl shadow-lg shadow-orange-100">
+            <Truck className="h-6 w-6 text-white" />
           </div>
-          <span className="text-lg font-semibold">TowTrack</span>
+          <div>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">Evakuatori</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">CRM Sistēma</p>
+          </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-4 py-8">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
+            <SidebarMenu className="gap-2">
+              {filteredItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
                     isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="rounded-2xl h-12 px-4 transition-all hover:bg-slate-50 data-[active=true]:bg-orange-500 data-[active=true]:text-white data-[active=true]:shadow-lg data-[active=true]:shadow-orange-100 group"
                   >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                    <Link href={item.url} className="flex items-center gap-3">
+                      <item.icon className="h-5 w-5" />
+                      <span className="font-bold">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -136,55 +91,34 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="w-full"
-                  data-testid="button-user-menu"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.profileImageUrl || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-1 flex-col items-start gap-0.5 text-left">
-                    <span className="text-sm font-medium truncate max-w-[140px]">
-                      {getUserDisplayName()}
-                    </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {isAdmin ? "Admin" : "Driver"}
-                    </Badge>
-                  </div>
-                  <ChevronUp className="ml-auto h-4 w-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width]"
-                align="start"
-                side="top"
-              >
-                <DropdownMenuItem asChild data-testid="menu-item-settings">
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild data-testid="menu-item-logout">
-                  <a href="/api/logout">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="p-6 border-t border-slate-50 space-y-6">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-12 w-12 rounded-2xl shadow-sm border-2 border-slate-50">
+            <AvatarImage src={user?.profileImageUrl || undefined} />
+            <AvatarFallback className="bg-orange-100 text-orange-600 font-black">
+              {user?.firstName?.[0] || "U"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="space-y-0.5">
+            <p className="text-sm font-black text-slate-800">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              {user?.role === "admin" ? "Administrators" : "Vadītājs"}
+            </p>
+          </div>
+        </div>
+
+        <Button 
+          variant="ghost" 
+          asChild 
+          className="w-full justify-start h-12 rounded-2xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-bold px-4"
+        >
+          <a href="/api/logout" className="flex items-center gap-3">
+            <LogOut className="h-5 w-5" />
+            Iziet no sistēmas
+          </a>
+        </Button>
       </SidebarFooter>
     </Sidebar>
   );

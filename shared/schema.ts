@@ -38,6 +38,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").default("driver").notNull(),
+  vehicleName: varchar("vehicle_name", { length: 255 }), 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -59,21 +60,43 @@ export const clients = pgTable("clients", {
 // Trips table
 export const trips = pgTable("trips", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  tripNumber: varchar("trip_number", { length: 50 }),
   driverId: varchar("driver_id").notNull().references(() => users.id),
   clientId: integer("client_id").references(() => clients.id),
-  vehicleMake: varchar("vehicle_make", { length: 100 }),
-  vehicleModel: varchar("vehicle_model", { length: 100 }),
-  vehicleColor: varchar("vehicle_color", { length: 50 }),
-  vehicleDescription: text("vehicle_description"),
+  manualClientName: varchar("manual_client_name", { length: 255 }),
+  
+  vehicleId: varchar("vehicle_id", { length: 100 }),
+  cargoName: varchar("cargo_name", { length: 255 }),
+  weightCategory: varchar("weight_category", { length: 50 }),
   licensePlate: varchar("license_plate", { length: 20 }).notNull(),
+  
   distanceKm: decimal("distance_km", { precision: 10, scale: 2 }).notNull(),
+  durationHours: decimal("duration_hours", { precision: 10, scale: 2 }),
+  
   pickupLocation: text("pickup_location"),
   dropoffLocation: text("dropoff_location"),
+  isTalaRiga: boolean("is_tala_riga").default(false),
+  isPieriga: boolean("is_pieriga").default(false),
+  
+  hasRati: boolean("has_rati").default(false),
+  hasTehniskaPalidziba: boolean("has_tehniska_palidziba").default(false),
+  hasDarbsNakti: boolean("has_darbs_nakti").default(false),
+  
+  paymentType: varchar("payment_type", { length: 50 }),
+  
+  extraCosts: decimal("extra_costs", { precision: 10, scale: 2 }),
+  extraCostsDescription: text("extra_costs_description"),
+  
   tripDate: timestamp("trip_date").notNull().defaultNow(),
   notes: text("notes"),
+  paymentNotes: text("payment_notes"),
+  
   status: tripStatusEnum("status").default("draft").notNull(),
   adminNotes: text("admin_notes"),
   costCalculated: decimal("cost_calculated", { precision: 10, scale: 2 }),
+  
+  attachments: jsonb("attachments").default([]),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
