@@ -296,12 +296,13 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     // Start of day in local time (00:00:00)
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    
+
     // Start of week (Monday) at 00:00:00
     const startOfWeek = new Date(startOfDay);
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
 
     const driverTrips = await db
       .select()
@@ -310,12 +311,15 @@ export class DatabaseStorage implements IStorage {
 
     const tripsToday = driverTrips.filter((t) => {
       const tripDate = new Date(t.tripDate);
-      return tripDate >= startOfDay;
+      // Remove time for comparison to include everything on that calendar day
+      const tripDateOnly = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate(), 0, 0, 0, 0);
+      return tripDateOnly.getTime() === startOfDay.getTime();
     }).length;
 
     const tripsThisWeek = driverTrips.filter((t) => {
       const tripDate = new Date(t.tripDate);
-      return tripDate >= startOfWeek;
+      const tripDateOnly = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate(), 0, 0, 0, 0);
+      return tripDateOnly >= startOfWeek;
     });
 
     const totalKmThisWeek = tripsThisWeek.reduce(
@@ -346,9 +350,11 @@ export class DatabaseStorage implements IStorage {
       with: { client: true, driver: true },
     });
 
-    const monthTrips = allTrips.filter(
-      (t) => new Date(t.tripDate) >= startOfMonth
-    );
+    const monthTrips = allTrips.filter((t) => {
+      const tripDate = new Date(t.tripDate);
+      const tripDateOnly = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate(), 0, 0, 0, 0);
+      return tripDateOnly >= startOfMonth;
+    });
 
     const totalTripsMonth = monthTrips.length;
     const totalKmMonth = monthTrips.reduce(
