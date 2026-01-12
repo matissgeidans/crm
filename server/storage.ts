@@ -353,11 +353,14 @@ export class DatabaseStorage implements IStorage {
 
     const totalTripsMonth = monthTrips.length;
     const totalKmMonth = monthTrips.reduce(
-      (sum, t) => sum + Number(t.distanceKm),
+      (sum, t) => sum + (t.distanceKm ? Number(t.distanceKm) : 0),
       0
     );
     const totalRevenueMonth = monthTrips.reduce(
-      (sum, t) => sum + (Number(t.costCalculated) || 0),
+      (sum, t) => {
+        const cost = t.cashAmount ? Number(t.cashAmount) : (t.costCalculated ? Number(t.costCalculated) : 0);
+        return sum + cost;
+      },
       0
     );
 
@@ -377,7 +380,7 @@ export class DatabaseStorage implements IStorage {
         const existing = clientStats.get(key) || { trips: 0, revenue: 0 };
         clientStats.set(key, {
           trips: existing.trips + 1,
-          revenue: existing.revenue + (Number(t.costCalculated) || 0),
+          revenue: existing.revenue + (t.cashAmount ? Number(t.cashAmount) : (t.costCalculated ? Number(t.costCalculated) : 0)),
         });
       }
     });
@@ -440,11 +443,14 @@ export class DatabaseStorage implements IStorage {
 
     const totalTripsAllTime = allTrips.length;
     const totalKmAllTime = allTrips.reduce(
-      (sum, t) => sum + Number(t.distanceKm),
+      (sum, t) => sum + (t.distanceKm ? Number(t.distanceKm) : 0),
       0
     );
     const totalRevenueAllTime = allTrips.reduce(
-      (sum, t) => sum + (Number(t.costCalculated) || 0),
+      (sum, t) => {
+        const cost = t.cashAmount ? Number(t.cashAmount) : (t.costCalculated ? Number(t.costCalculated) : 0);
+        return sum + cost;
+      },
       0
     );
     const averageTripDistance = totalTripsAllTime > 0 ? totalKmAllTime / totalTripsAllTime : 0;
@@ -463,7 +469,10 @@ export class DatabaseStorage implements IStorage {
       });
 
       const revenue = monthTrips.reduce(
-        (sum, t) => sum + (Number(t.costCalculated) || 0),
+        (sum, t) => {
+          const cost = t.cashAmount ? Number(t.cashAmount) : (t.costCalculated ? Number(t.costCalculated) : 0);
+          return sum + cost;
+        },
         0
       );
 
@@ -485,7 +494,7 @@ export class DatabaseStorage implements IStorage {
       });
 
       const distance = monthTrips.reduce(
-        (sum, t) => sum + Number(t.distanceKm),
+        (sum, t) => sum + (t.distanceKm ? Number(t.distanceKm) : 0),
         0
       );
 
@@ -517,7 +526,7 @@ export class DatabaseStorage implements IStorage {
         const existing = clientStats.get(key) || { trips: 0, revenue: 0 };
         clientStats.set(key, {
           trips: existing.trips + 1,
-          revenue: existing.revenue + (Number(t.costCalculated) || 0),
+          revenue: existing.revenue + (t.cashAmount ? Number(t.cashAmount) : (t.costCalculated ? Number(t.costCalculated) : 0)),
         });
       }
     });
