@@ -294,10 +294,14 @@ export class DatabaseStorage implements IStorage {
   // Stats
   async getDriverStats(driverId: string): Promise<DriverStats> {
     const now = new Date();
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const startOfWeek = new Date();
-    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Mon-Sun
+    // Start of day in local time (or at least consistent with tripDate)
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Start of week (Monday)
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
     startOfWeek.setHours(0, 0, 0, 0);
 
     const driverTrips = await db
@@ -305,13 +309,15 @@ export class DatabaseStorage implements IStorage {
       .from(trips)
       .where(eq(trips.driverId, driverId));
 
-    const tripsToday = driverTrips.filter(
-      (t) => new Date(t.tripDate) >= startOfDay
-    ).length;
+    const tripsToday = driverTrips.filter((t) => {
+      const tripDate = new Date(t.tripDate);
+      return tripDate >= startOfDay;
+    }).length;
 
-    const tripsThisWeek = driverTrips.filter(
-      (t) => new Date(t.tripDate) >= startOfWeek
-    );
+    const tripsThisWeek = driverTrips.filter((t) => {
+      const tripDate = new Date(t.tripDate);
+      return tripDate >= startOfWeek;
+    });
 
     const totalKmThisWeek = tripsThisWeek.reduce(
       (sum, t) => sum + Number(t.distanceKm),
