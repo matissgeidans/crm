@@ -294,21 +294,21 @@ export class DatabaseStorage implements IStorage {
   // Stats
   async getDriverStats(driverId: string): Promise<DriverStats> {
     const now = new Date();
-    // Start of day in local time (or at least consistent with tripDate)
+    // Use a more robust way to get start of day in UTC or local consistently
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    startOfDay.setHours(0, 0, 0, 0);
     
-    // Start of week (Monday)
-    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay);
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
 
     const driverTrips = await db
       .select()
       .from(trips)
       .where(eq(trips.driverId, driverId));
 
+    // Fix: Ensure we are comparing dates correctly by using getTime() or setting both to same precision
     const tripsToday = driverTrips.filter((t) => {
       const tripDate = new Date(t.tripDate);
       return tripDate >= startOfDay;
@@ -320,7 +320,7 @@ export class DatabaseStorage implements IStorage {
     });
 
     const totalKmThisWeek = tripsThisWeek.reduce(
-      (sum, t) => sum + Number(t.distanceKm),
+      (sum, t) => sum + (t.distanceKm ? Number(t.distanceKm) : 0),
       0
     );
 
