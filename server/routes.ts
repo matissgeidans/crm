@@ -17,12 +17,10 @@ export async function registerRoutes(
   // Auth routes - public endpoint to check auth state
   app.get("/api/auth/user", async (req: any, res) => {
     try {
-      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+      if (!req.isAuthenticated()) {
         return res.json(null);
       }
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.json(null);
@@ -109,8 +107,8 @@ export async function registerRoutes(
   // Trip routes
   app.get("/api/trips", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
+      const userId = user.id;
       
       // If admin and specific filters, use those
       if (user?.role === "admin" && (req.query.limit || req.query.status)) {
@@ -166,8 +164,8 @@ export async function registerRoutes(
 
   app.get("/api/trips/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
+      const userId = user.id;
       
       // Enforce driver scoping at storage level
       const driverId = user?.role === "admin" ? undefined : userId;
@@ -186,7 +184,7 @@ export async function registerRoutes(
 
   app.post("/api/trips", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const body = { ...req.body };
       
       // Clean up empty strings for numeric fields
@@ -215,8 +213,8 @@ export async function registerRoutes(
   app.patch("/api/trips/:id", isAuthenticated, async (req: any, res) => {
     try {
       const tripId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
+      const userId = user.id;
       
       // Enforce driver scoping at storage level
       const driverId = user?.role === "admin" ? undefined : userId;
@@ -287,7 +285,7 @@ export async function registerRoutes(
   // Stats routes
   app.get("/api/stats/driver", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const stats = await storage.getDriverStats(userId);
       res.json(stats);
     } catch (error) {
@@ -318,7 +316,7 @@ export async function registerRoutes(
 
   app.patch("/api/user/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { firstName, lastName, vehicleName } = req.body;
       const user = await storage.upsertUser({
         id: userId,
