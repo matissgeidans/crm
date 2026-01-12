@@ -220,11 +220,16 @@ export async function registerRoutes(
       if (user?.role !== "admin" && !["draft", "submitted"].includes(existingTrip.status)) {
         return res.status(403).json({ message: "Cannot edit processed trips" });
       }
-      
+
       const partialTripSchema = insertTripSchema.partial();
+      // Ensure tripDate is a Date object if provided, and remove costCalculated if it exists in body
+      const body = { ...req.body };
+      delete body.costCalculated;
+      delete body.id; // Also remove id if sent by accident
+      
       const validatedData = partialTripSchema.parse({
-        ...req.body,
-        tripDate: req.body.tripDate ? new Date(req.body.tripDate) : undefined,
+        ...body,
+        tripDate: body.tripDate ? new Date(body.tripDate) : undefined,
       });
       
       // Pass driverId to enforce scoping at storage level
