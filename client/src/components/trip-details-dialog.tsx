@@ -49,11 +49,18 @@ export function TripDetailsDialog({ trip, open, onOpenChange }: TripDetailsDialo
             </div>
             <div>
               <DialogTitle className="text-2xl font-black text-slate-800">
-                {trip.tripNumber ? `Izsaukums #${trip.tripNumber}` : "Brauciena informācija"}
+                Brauciena informācija
               </DialogTitle>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                Sistēmas ID: {trip.id}
-              </p>
+              <div className="flex flex-col gap-1">
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                  Sistēmas ID: {trip.id}
+                </p>
+                {trip.tripNumber && (
+                  <p className="text-sm font-black text-orange-600">
+                    Izsaukuma nr: {trip.tripNumber}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           <Badge variant={status.variant} className="rounded-full px-4 py-1.5 font-black uppercase tracking-widest text-[10px]">

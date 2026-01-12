@@ -5,10 +5,64 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LogOut, User, Shield, Palette } from "lucide-react";
+import { LogOut, User, Shield, Palette, Save, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+const profileSchema = z.object({
+  firstName: z.string().min(1, "Vārds ir obligāts"),
+  lastName: z.string().min(1, "Uzvārds ir obligāts"),
+  vehicleName: z.string().optional(),
+});
+
+type ProfileValues = z.infer<typeof profileSchema>;
 
 export default function SettingsPage() {
   const { user, isAdmin } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const form = useForm<ProfileValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      vehicleName: user?.vehicleName || "",
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: ProfileValues) => {
+      return apiRequest("PATCH", "/api/user/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Profils atjaunināts",
+        description: "Jūsu izmaiņas ir saglabātas.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Kļūda",
+        description: "Neizdevās atjaunināt profilu.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -27,108 +81,158 @@ export default function SettingsPage() {
     if (user?.firstName) {
       return user.firstName;
     }
-    return "User";
+    return "Lietotājs";
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account and preferences
+    <div className="space-y-8 p-8 bg-slate-50 min-h-screen">
+      <div className="space-y-1">
+        <h1 className="text-3xl font-black text-slate-800">Iestatījumi</h1>
+        <p className="text-slate-500 font-medium">
+          Pārvaldiet savu profilu un sistēmas vēlmes
         </p>
       </div>
 
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              <CardTitle>Profile</CardTitle>
-            </div>
-            <CardDescription>Your account information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+      <div className="grid gap-8 max-w-4xl">
+        <Card className="border-none shadow-sm rounded-[32px] overflow-hidden">
+          <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100">
             <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
+              <div className="bg-orange-500 p-3 rounded-2xl shadow-lg shadow-orange-100">
+                <User className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-black text-slate-800">Mans profils</CardTitle>
+                <CardDescription className="font-medium">Jūsu personīgā informācija</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 space-y-8">
+            <div className="flex items-center gap-6">
+              <Avatar className="h-20 w-20 rounded-2xl ring-4 ring-orange-50 shadow-sm">
                 <AvatarImage src={user?.profileImageUrl || undefined} />
-                <AvatarFallback className="text-lg">
+                <AvatarFallback className="bg-orange-500 text-white text-xl font-black">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="text-lg font-semibold" data-testid="text-user-name">
+                <h3 className="text-xl font-black text-slate-800">
                   {getUserDisplayName()}
                 </h3>
-                <p className="text-sm text-muted-foreground" data-testid="text-user-email">
-                  {user?.email || "No email provided"}
+                <p className="text-slate-400 font-bold text-sm">
+                  {user?.email}
                 </p>
               </div>
             </div>
 
-            <Separator />
+            <Separator className="bg-slate-100" />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">First Name</p>
-                <p className="mt-1">{user?.firstName || "—"}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Last Name</p>
-                <p className="mt-1">{user?.lastName || "—"}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Email</p>
-                <p className="mt-1">{user?.email || "—"}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Account Created</p>
-                <p className="mt-1">
-                  {user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString()
-                    : "—"}
-                </p>
-              </div>
-            </div>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="space-y-6">
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-600 font-bold">Vārds</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Vārds" {...field} className="rounded-xl border-slate-100 bg-slate-50/50" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-600 font-bold">Uzvārds</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Uzvārds" {...field} className="rounded-xl border-slate-100 bg-slate-50/50" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="vehicleName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-slate-600 font-bold">Auto nosaukums / Modelis</FormLabel>
+                      <FormControl>
+                        <Input placeholder="piem. SCANIA R450" {...field} className="rounded-xl border-slate-100 bg-slate-50/50" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button 
+                  type="submit" 
+                  className="rounded-xl h-12 px-8 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg shadow-orange-100 border-none"
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Saglabāt izmaiņas
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              <CardTitle>Role & Permissions</CardTitle>
-            </div>
-            <CardDescription>Your access level in the system</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card className="border-none shadow-sm rounded-[32px] overflow-hidden">
+          <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100">
             <div className="flex items-center gap-4">
-              <Badge variant={isAdmin ? "default" : "secondary"} className="text-sm px-3 py-1">
-                {isAdmin ? "Administrator" : "Driver"}
+              <div className="bg-orange-500 p-3 rounded-2xl shadow-lg shadow-orange-100">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-black text-slate-800">Loma & Atļaujas</CardTitle>
+                <CardDescription className="font-medium">Jūsu piekļuves līmenis sistēmā</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8">
+            <div className="flex items-center gap-4">
+              <Badge className={cn(
+                "rounded-full px-4 py-1.5 font-black uppercase tracking-widest text-[10px]",
+                isAdmin ? "bg-orange-500 text-white" : "bg-orange-50 text-orange-600"
+              )}>
+                {isAdmin ? "Administrators" : "Vadītājs"}
               </Badge>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-500 font-medium">
                 {isAdmin
-                  ? "Full access to all reports, clients, and system settings"
-                  : "Access to your own trip reports and dashboard"}
+                  ? "Pilna piekļuve visām atskaitēm, klientiem un sistēmas iestatījumiem"
+                  : "Piekļuve personīgajām braucienu atskaitēm un vadības panelim"}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Palette className="h-5 w-5" />
-              <CardTitle>Appearance</CardTitle>
+        <Card className="border-none shadow-sm rounded-[32px] overflow-hidden">
+          <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100">
+            <div className="flex items-center gap-4">
+              <div className="bg-orange-500 p-3 rounded-2xl shadow-lg shadow-orange-100">
+                <Palette className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-black text-slate-800">Izskats</CardTitle>
+                <CardDescription className="font-medium">Pielāgojiet sistēmas vizuālo tēmu</CardDescription>
+              </div>
             </div>
-            <CardDescription>Customize the look and feel</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Theme</p>
-                <p className="text-sm text-muted-foreground">
-                  Choose between light and dark mode
+                <p className="font-black text-slate-800">Vizuālā tēma</p>
+                <p className="text-sm text-slate-500 font-medium">
+                  Pārslēdzieties starp gaišo un tumšo režīmu
                 </p>
               </div>
               <ThemeToggle />
@@ -136,19 +240,14 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" asChild data-testid="button-logout-settings">
-              <a href="/api/logout">
-                <LogOut className="mr-2 h-4 w-4" />
-                Log Out
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="pt-4 pb-8 flex justify-center">
+          <Button variant="ghost" asChild className="rounded-xl text-slate-400 font-bold hover:text-red-500 hover:bg-red-50">
+            <a href="/api/logout">
+              <LogOut className="mr-2 h-4 w-4" />
+              Izrakstīties no sistēmas
+            </a>
+          </Button>
+        </div>
       </div>
     </div>
   );

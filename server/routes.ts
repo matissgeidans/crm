@@ -298,6 +298,23 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/user/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { firstName, lastName, vehicleName } = req.body;
+      const user = await storage.upsertUser({
+        id: userId,
+        firstName,
+        lastName,
+        vehicleName,
+      });
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // Export routes
   app.get("/api/reports/export/excel", isAuthenticated, isAdmin, async (req, res) => {
     try {

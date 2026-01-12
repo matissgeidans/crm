@@ -79,7 +79,7 @@ export default function DriverDashboard() {
         <div className="flex gap-4">
           <Button 
             onClick={handleNewTrip} 
-            className="rounded-full h-12 px-6 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg shadow-orange-100"
+            className="rounded-full h-12 px-6 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg shadow-orange-100 border-none"
           >
             <Plus className="mr-2 h-5 w-5" />
             Jauns izsaukums
@@ -145,6 +145,11 @@ export default function DriverDashboard() {
                         <p className="text-xs text-slate-400 font-bold">
                           {new Date(trip.tripDate).toLocaleDateString("lv-LV", { day: "numeric", month: "long" })}, {new Date(trip.tripDate).toLocaleTimeString("lv-LV", { hour: "2-digit", minute: "2-digit" })}
                         </p>
+                        {trip.tripNumber && (
+                          <p className="text-[10px] font-bold text-orange-500 uppercase">
+                            NR: {trip.tripNumber}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -170,7 +175,15 @@ export default function DriverDashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
                       <MapPin className="h-4 w-4 text-slate-300" />
-                      <span className="truncate">{trip.pickupLocation || "Nav norādīts"}</span>
+                      <div className="flex flex-col">
+                        <span className="truncate">{trip.pickupLocation || "Nav norādīts"}</span>
+                        {(trip.isTalaRiga || trip.isPieriga) && (
+                          <div className="flex gap-2 pt-1">
+                            {trip.isTalaRiga && <Badge className="bg-orange-100 text-orange-600 rounded-lg text-[9px] h-4">Tālā Rīga</Badge>}
+                            {trip.isPieriga && <Badge className="bg-orange-100 text-orange-600 rounded-lg text-[9px] h-4">Pierīga</Badge>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
                       <Truck className="h-4 w-4 text-slate-300" />
@@ -221,7 +234,7 @@ export default function DriverDashboard() {
       <div className="fixed bottom-10 right-10">
         <Button 
           onClick={handleNewTrip}
-          className="rounded-full h-16 px-10 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg shadow-2xl shadow-orange-300 transform hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+          className="rounded-full h-16 px-10 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg shadow-2xl shadow-orange-300 transform hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border-none"
         >
           <Plus className="h-6 w-6" />
           Jauns izsaukums
