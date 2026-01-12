@@ -187,10 +187,20 @@ export async function registerRoutes(
   app.post("/api/trips", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const body = { ...req.body };
+      
+      // Clean up empty strings for numeric fields
+      const numericFields = ["distanceKm", "durationHours", "extraCosts", "cashAmount"];
+      numericFields.forEach(field => {
+        if (body[field] === "") {
+          body[field] = null;
+        }
+      });
+
       const tripData = {
-        ...req.body,
+        ...body,
         driverId: userId,
-        tripDate: req.body.tripDate ? new Date(req.body.tripDate) : new Date(),
+        tripDate: body.tripDate ? new Date(body.tripDate) : new Date(),
       };
       
       const validatedData = insertTripSchema.parse(tripData);
@@ -226,6 +236,14 @@ export async function registerRoutes(
       const body = { ...req.body };
       delete body.costCalculated;
       delete body.id; // Also remove id if sent by accident
+
+      // Clean up empty strings for numeric fields
+      const numericFields = ["distanceKm", "durationHours", "extraCosts", "cashAmount"];
+      numericFields.forEach(field => {
+        if (body[field] === "") {
+          body[field] = null;
+        }
+      });
       
       const validatedData = partialTripSchema.parse({
         ...body,
