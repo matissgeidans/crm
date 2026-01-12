@@ -294,9 +294,10 @@ export class DatabaseStorage implements IStorage {
   // Stats
   async getDriverStats(driverId: string): Promise<DriverStats> {
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfWeek = new Date();
+    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Mon-Sun
     startOfWeek.setHours(0, 0, 0, 0);
 
     const driverTrips = await db

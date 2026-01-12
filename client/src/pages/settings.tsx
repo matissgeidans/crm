@@ -216,31 +216,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm rounded-[32px] overflow-hidden">
-          <CardHeader className="bg-slate-50/50 p-8 border-b border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-500 p-3 rounded-2xl shadow-lg shadow-orange-100">
-                <Palette className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-black text-slate-800">Izskats</CardTitle>
-                <CardDescription className="font-medium">Pielāgojiet sistēmas vizuālo tēmu</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-black text-slate-800">Vizuālā tēma</p>
-                <p className="text-sm text-slate-500 font-medium">
-                  Pārslēdzieties starp gaišo un tumšo režīmu
-                </p>
-              </div>
-              <ThemeToggle />
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="pt-4 pb-8 flex justify-center">
           <Button variant="ghost" asChild className="rounded-xl text-slate-400 font-bold hover:text-red-500 hover:bg-red-50">
             <a href="/api/logout">
