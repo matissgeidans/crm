@@ -61,6 +61,8 @@ export interface DriverStats {
 }
 
 export interface AdminStats {
+  totalTripsToday: number;
+  totalKmToday: number;
   totalTripsMonth: number;
   totalKmMonth: number;
   totalRevenueMonth: number;
@@ -329,10 +331,12 @@ export class DatabaseStorage implements IStorage {
       0
     );
 
+    const startOfWeekOnly = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate(), 0, 0, 0, 0);
+
     const tripsThisWeek = driverTrips.filter((t) => {
       const tripDate = new Date(t.tripDate);
       const tripDateOnly = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate(), 0, 0, 0, 0);
-      return tripDateOnly >= startOfWeek;
+      return tripDateOnly >= startOfWeekOnly;
     });
 
     const totalKmThisWeek = tripsThisWeek.reduce(
@@ -439,7 +443,22 @@ export class DatabaseStorage implements IStorage {
       ([status, count]) => ({ status, count })
     );
 
+    const tripsTodayList = allTrips.filter((t) => {
+      const tripDate = new Date(t.tripDate);
+      const tripDateOnly = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate(), 0, 0, 0, 0);
+      const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      return tripDateOnly.getTime() === todayOnly.getTime();
+    });
+
+    const totalTripsToday = tripsTodayList.length;
+    const totalKmToday = tripsTodayList.reduce(
+      (sum, t) => sum + (t.distanceKm ? Number(t.distanceKm) : 0),
+      0
+    );
+
     return {
+      totalTripsToday,
+      totalKmToday,
       totalTripsMonth,
       totalKmMonth,
       totalRevenueMonth,

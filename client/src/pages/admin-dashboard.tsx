@@ -27,6 +27,8 @@ import {
 import type { TripWithRelations, Client } from "@shared/schema";
 
 interface AdminStats {
+  totalTripsToday: number;
+  totalKmToday: number;
   totalTripsMonth: number;
   totalKmMonth: number;
   totalRevenueMonth: number;

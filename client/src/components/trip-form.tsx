@@ -132,7 +132,8 @@ export function TripForm({ trip, onSuccess, onCancel, driverName, driverVehicle 
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/driver"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats/admin"] });
       toast({
         title: variables.status === "submitted" ? "Izsaukums iesniegts" : "Melnraksts saglabāts",
         description: variables.status === "submitted" 
