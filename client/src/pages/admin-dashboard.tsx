@@ -284,10 +284,10 @@ export default function AdminDashboard() {
                   >
                     <div>
                       <p className="font-medium">
-                        {trip.vehicleMake} {trip.vehicleModel}
+                        {trip.cargoName || "Nav norādīts"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {trip.driver?.firstName || trip.driver?.email || "Unknown driver"} - {Number(trip.distanceKm).toFixed(1)} km
+                        {trip.driver?.firstName || trip.driver?.email || "Nezināms vadītājs"} - {Number(trip.distanceKm).toFixed(1)} km
                       </p>
                     </div>
                     <span className="text-sm font-mono uppercase text-muted-foreground">
