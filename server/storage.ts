@@ -54,6 +54,7 @@ export interface TripFilters {
 
 export interface DriverStats {
   tripsToday: number;
+  totalKmToday: number;
   tripsThisWeek: number;
   totalKmThisWeek: number;
   pendingReports: number;
@@ -315,12 +316,18 @@ export class DatabaseStorage implements IStorage {
       .from(trips)
       .where(eq(trips.driverId, driverId));
 
-    const tripsToday = driverTrips.filter((t) => {
+    const tripsTodayList = driverTrips.filter((t) => {
       const tripDate = new Date(t.tripDate);
-      // Remove time for comparison to include everything on that calendar day
       const tripDateOnly = new Date(tripDate.getFullYear(), tripDate.getMonth(), tripDate.getDate(), 0, 0, 0, 0);
       return tripDateOnly.getTime() === startOfDay.getTime();
-    }).length;
+    });
+
+    const tripsToday = tripsTodayList.length;
+
+    const totalKmToday = tripsTodayList.reduce(
+      (sum, t) => sum + (t.distanceKm ? Number(t.distanceKm) : 0),
+      0
+    );
 
     const tripsThisWeek = driverTrips.filter((t) => {
       const tripDate = new Date(t.tripDate);
@@ -339,6 +346,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       tripsToday,
+      totalKmToday,
       tripsThisWeek: tripsThisWeek.length,
       totalKmThisWeek,
       pendingReports,

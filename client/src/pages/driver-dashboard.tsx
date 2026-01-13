@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 interface DriverStats {
   tripsToday: number;
+  totalKmToday: number;
   tripsThisWeek: number;
   totalKmThisWeek: number;
   pendingReports: number;
@@ -105,10 +106,10 @@ export default function DriverDashboard() {
           
           <Card className="bg-white border-none shadow-sm rounded-3xl overflow-hidden relative group">
             <CardContent className="p-8 space-y-2">
-              <p className="text-slate-400 font-bold text-sm">Nobraukti km</p>
-              <h3 className="text-5xl font-black text-slate-800">{stats?.totalKmThisWeek?.toFixed(0) ?? 0}</h3>
+              <p className="text-slate-400 font-bold text-sm">Šodien nobraukti</p>
+              <h3 className="text-5xl font-black text-slate-800">{stats?.totalKmToday?.toFixed(0) ?? 0}</h3>
               <p className="text-slate-400 font-bold text-sm">km</p>
-              <div className="absolute top-6 right-6 bg-orange-500/10 p-3 rounded-2xl">
+              <div className="absolute top-6 right-6 bg-orange-50/10 p-3 rounded-2xl">
                 <MapPin className="h-6 w-6 text-orange-500" />
               </div>
             </CardContent>
