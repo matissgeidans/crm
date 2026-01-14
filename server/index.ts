@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import pkg from "pg"; // native postgres
+import pkg from "pg";
 const { Pool } = pkg;
 
 const app = express();
@@ -53,7 +53,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -64,14 +63,13 @@ app.use((req, res, next) => {
 // ---------------- PostgreSQL Pool ----------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false }, // tikai vienreiz
 });
 
 // ---------------- Auto-create / update tables & demo user ----------------
 async function initDB() {
   const client = await pool.connect();
   try {
-    // 1️⃣ Izveido tabulas, ja tās vēl nav
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -91,7 +89,6 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT now()
       );
 
-      -- Droši pievieno trūkstošās kolonnas vecajās tabulās
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
@@ -102,7 +99,6 @@ async function initDB() {
 
     console.log("✅ Database tables created or updated");
 
-    // 2️⃣ Pievieno demo lietotāju, ja viņš vēl neeksistē
     const { rowCount } = await client.query(
       `SELECT id FROM users WHERE username = $1`,
       ["demo"]
