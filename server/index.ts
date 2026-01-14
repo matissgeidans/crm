@@ -67,10 +67,11 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }, // svarīgi Free tier
 });
 
-// ---------------- Auto-create tables ----------------
+// ---------------- Auto-create / update tables ----------------
 async function initDB() {
   const client = await pool.connect();
   try {
+    // Izveido tabulas, ja to vēl nav
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -85,10 +86,13 @@ async function initDB() {
         token TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT now()
       );
+
+      -- Droši pievieno password kolonnu, ja tās vēl nav vecajā users tabulā
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
     `);
-    console.log("✅ Database tables created or already exist");
+    console.log("✅ Database tables created or updated");
   } catch (e) {
-    console.error("❌ Error creating tables", e);
+    console.error("❌ Error creating/updating tables", e);
   } finally {
     client.release();
   }
