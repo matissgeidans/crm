@@ -67,17 +67,19 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }, // svarīgi Free tier
 });
 
-// ---------------- Auto-create / update tables ----------------
+// ---------------- Auto-create / update tables & demo user ----------------
 async function initDB() {
   const client = await pool.connect();
   try {
-    // Izveido tabulas, ja tās vēl nav
+    // 1️⃣ Izveido tabulas, ja tās vēl nav
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
+        password TEXT,
         email TEXT,
+        first_name TEXT,
+        last_name TEXT,
         created_at TIMESTAMP DEFAULT now()
       );
 
@@ -89,12 +91,33 @@ async function initDB() {
       );
 
       -- Droši pievieno trūkstošās kolonnas vecajās tabulās
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT;
     `);
+
     console.log("✅ Database tables created or updated");
+
+    // 2️⃣ Pievieno demo lietotāju, ja viņš vēl neeksistē
+    const { rowCount } = await client.query(
+      `SELECT id FROM users WHERE username = $1`,
+      ["demo"]
+    );
+
+    if (rowCount === 0) {
+      await client.query(
+        `INSERT INTO users (username, password, email, first_name, last_name)
+         VALUES ($1, $2, $3, $4, $5)`,
+        ["demo", "demo123", "demo@example.com", "Demo", "User"]
+      );
+      console.log("✅ Demo user created: username=demo, password=demo123");
+    } else {
+      console.log("ℹ️ Demo user already exists");
+    }
   } catch (e) {
-    console.error("❌ Error creating/updating tables", e);
+    console.error("❌ Error creating/updating tables or demo user", e);
   } finally {
     client.release();
   }
