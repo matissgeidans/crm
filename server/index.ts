@@ -19,7 +19,7 @@ app.use(
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
-  }),
+  })
 );
 
 app.use(express.urlencoded({ extended: false }));
@@ -87,7 +87,7 @@ async function initDB() {
         tripNumber TEXT PRIMARY KEY,
         tripDate TIMESTAMP,
         driverId UUID REFERENCES users(id),
-        clientId UUID,
+        clientId UUID REFERENCES users(id),
         manualClientName TEXT,
         vehicleId TEXT,
         cargoName TEXT,
@@ -116,26 +116,9 @@ async function initDB() {
       );
     `);
 
-    // 2️⃣ Alter table to ensure all columns exist (safe for redeploy)
-    const userColumns = [
-      "username",
-      "password_hash",
-      "firstName",
-      "lastName",
-      "email",
-      "role",
-      "vehicleName",
-      "profileImageUrl",
-      "createdAt",
-      "updatedAt"
-    ];
-    for (const col of userColumns) {
-      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${col} TEXT`);
-    }
-
     console.log("✅ Database tables created or updated");
 
-    // 3️⃣ Demo user
+    // 2️⃣ Demo user
     const { rowCount } = await client.query(
       `SELECT id FROM users WHERE username = $1`,
       ["demo"]
@@ -147,7 +130,7 @@ async function initDB() {
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [
           "demo",
-          "$2b$10$DemoHashForTestingPurposes",
+          "$2b$10$DemoHashForTestingPurposes", // placeholder hash
           "Demo",
           "User",
           "demo@example.com",
