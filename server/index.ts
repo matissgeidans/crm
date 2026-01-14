@@ -68,7 +68,7 @@ const pool = new Pool({
 async function initDB() {
   const client = await pool.connect();
   try {
-    // ---------------- Users table ----------------
+    // ---------------- Users & Trips tables ----------------
     await client.query(`
       CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -122,13 +122,14 @@ async function initDB() {
     console.log("✅ Database tables created or updated");
 
     // ---------------- Demo user ----------------
-    const { rowCount } = await client.query(
+    const { rowCount: userCount } = await client.query(
       `SELECT id FROM users WHERE username = $1`,
       ["demo"]
     );
 
-    if (rowCount === 0) {
-      await client.query(
+    let demoUserId: string;
+    if (userCount === 0) {
+      const res = await client.query(
         `INSERT INTO users (
           username,
           password_hash,
@@ -138,10 +139,10 @@ async function initDB() {
           role,
           "vehicleName",
           profileImageUrl
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
         [
           "demo",
-          "$2b$10$DemoHashForTestingPurposes", // placeholder hash
+          "$2b$10$DemoHashForTestingPurposes",
           "Demo",
           "User",
           "demo@example.com",
@@ -150,9 +151,61 @@ async function initDB() {
           "https://via.placeholder.com/150"
         ]
       );
+      demoUserId = res.rows[0].id;
       console.log("✅ Demo user created");
     } else {
+      const res = await client.query(
+        `SELECT id FROM users WHERE username = $1`,
+        ["demo"]
+      );
+      demoUserId = res.rows[0].id;
       console.log("ℹ️ Demo user already exists");
+    }
+
+    // ---------------- Demo trip ----------------
+    const { rowCount: tripCount } = await client.query(
+      `SELECT tripNumber FROM trips WHERE tripNumber = $1`,
+      ["TRIP-001"]
+    );
+
+    if (tripCount === 0) {
+      await client.query(
+        `INSERT INTO trips (
+          tripNumber,
+          tripDate,
+          driverId,
+          manualClientName,
+          vehicleId,
+          cargoName,
+          licensePlate,
+          weightCategory,
+          distanceKm,
+          durationHours,
+          pickupLocation,
+          dropoffLocation,
+          status,
+          createdAt,
+          updatedAt
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, now(), now())`,
+        [
+          "TRIP-001",
+          new Date(),
+          demoUserId,
+          "Demo Client",
+          "Truck-001",
+          "General Cargo",
+          "ABC-1234",
+          "0-5T",
+          10.5,
+          1.2,
+          "Riga",
+          "Jurmala",
+          "melnraksts"
+        ]
+      );
+      console.log("✅ Demo trip created");
+    } else {
+      console.log("ℹ️ Demo trip already exists");
     }
   } catch (err) {
     console.error("❌ DB init error:", err);
