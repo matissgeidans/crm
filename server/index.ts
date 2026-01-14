@@ -64,7 +64,7 @@ app.use((req, res, next) => {
 // ---------------- PostgreSQL Pool ----------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // svarīgi Free tier
+  ssl: { rejectUnauthorized: false },
 });
 
 // ---------------- Auto-create / update tables & demo user ----------------
@@ -80,6 +80,7 @@ async function initDB() {
         email TEXT,
         first_name TEXT,
         last_name TEXT,
+        profile_image_url TEXT,
         created_at TIMESTAMP DEFAULT now()
       );
 
@@ -96,6 +97,7 @@ async function initDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
     `);
 
     console.log("✅ Database tables created or updated");
@@ -108,9 +110,9 @@ async function initDB() {
 
     if (rowCount === 0) {
       await client.query(
-        `INSERT INTO users (username, password, email, first_name, last_name)
-         VALUES ($1, $2, $3, $4, $5)`,
-        ["demo", "demo123", "demo@example.com", "Demo", "User"]
+        `INSERT INTO users (username, password, email, first_name, last_name, profile_image_url)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        ["demo", "demo123", "demo@example.com", "Demo", "User", "https://via.placeholder.com/150"]
       );
       console.log("✅ Demo user created: username=demo, password=demo123");
     } else {
@@ -125,13 +127,10 @@ async function initDB() {
 
 // ---------------- Main Async IIFE ----------------
 (async () => {
-  // 1️⃣ Initialize DB first
   await initDB();
 
-  // 2️⃣ Register routes
   await registerRoutes(httpServer, app);
 
-  // 3️⃣ Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -140,7 +139,6 @@ async function initDB() {
     throw err;
   });
 
-  // 4️⃣ Setup Vite only in development
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -148,7 +146,6 @@ async function initDB() {
     await setupVite(httpServer, app);
   }
 
-  // 5️⃣ Start server
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
