@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
-import { createServer } from "http";
 import pkg from "pg";
 const { Pool } = pkg;
 
@@ -14,6 +14,7 @@ declare module "http" {
   }
 }
 
+// ---------------- Body parsing ----------------
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -21,9 +22,9 @@ app.use(
     },
   })
 );
-
 app.use(express.urlencoded({ extended: false }));
 
+// ---------------- Logging ----------------
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -60,15 +61,17 @@ app.use((req, res, next) => {
 // ---------------- PostgreSQL Pool ----------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false }, // svarīgi Free tier
 });
 
-// ---------------- Auto-create / update tables & demo user ----------------
+// ---------------- Init DB ----------------
 async function initDB() {
   const client = await pool.connect();
   try {
-    // 1️⃣ Users table
+    // ---------------- Users table ----------------
     await client.query(`
+      CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username TEXT UNIQUE NOT NULL,
@@ -77,7 +80,7 @@ async function initDB() {
         lastName TEXT,
         email TEXT,
         role TEXT DEFAULT 'user',
-        vehicleName TEXT,
+        "vehicleName" TEXT,
         profileImageUrl TEXT,
         createdAt TIMESTAMP DEFAULT now(),
         updatedAt TIMESTAMP DEFAULT now()
@@ -118,7 +121,7 @@ async function initDB() {
 
     console.log("✅ Database tables created or updated");
 
-    // 2️⃣ Demo user
+    // ---------------- Demo user ----------------
     const { rowCount } = await client.query(
       `SELECT id FROM users WHERE username = $1`,
       ["demo"]
@@ -126,7 +129,7 @@ async function initDB() {
 
     if (rowCount === 0) {
       await client.query(
-        `INSERT INTO users (username, password_hash, firstName, lastName, email, role, vehicleName, profileImageUrl)
+        `INSERT INTO users (username, password_hash, firstName, lastName, email, role, "vehicleName", profileImageUrl)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [
           "demo",
@@ -143,8 +146,8 @@ async function initDB() {
     } else {
       console.log("ℹ️ Demo user already exists");
     }
-  } catch (e) {
-    console.error("❌ DB init error", e);
+  } catch (err) {
+    console.error("❌ DB init error:", err);
   } finally {
     client.release();
   }
@@ -152,9 +155,13 @@ async function initDB() {
 
 // ---------------- Main Async IIFE ----------------
 (async () => {
+  // 1️⃣ Initialize DB first
   await initDB();
+
+  // 2️⃣ Register routes
   await registerRoutes(httpServer, app);
 
+  // 3️⃣ Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -162,6 +169,7 @@ async function initDB() {
     throw err;
   });
 
+  // 4️⃣ Setup Vite only in development
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -169,9 +177,9 @@ async function initDB() {
     await setupVite(httpServer, app);
   }
 
+  // 5️⃣ Start server
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    { port, host: "0.0.0.0", reusePort: true },
-    () => log(`serving on port ${port}`)
+  httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () =>
+    log(`serving on port ${port}`)
   );
 })();
