@@ -61,7 +61,7 @@ app.use((req, res, next) => {
 // ---------------- PostgreSQL Pool ----------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // svarīgi Free tier
+  ssl: { rejectUnauthorized: false },
 });
 
 // ---------------- Init DB ----------------
@@ -129,8 +129,16 @@ async function initDB() {
 
     if (rowCount === 0) {
       await client.query(
-        `INSERT INTO users (username, password_hash, firstName, lastName, email, role, "vehicleName", profileImageUrl)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        `INSERT INTO users (
+          username,
+          password_hash,
+          firstName,
+          lastName,
+          email,
+          role,
+          "vehicleName",
+          profileImageUrl
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [
           "demo",
           "$2b$10$DemoHashForTestingPurposes", // placeholder hash
@@ -155,13 +163,10 @@ async function initDB() {
 
 // ---------------- Main Async IIFE ----------------
 (async () => {
-  // 1️⃣ Initialize DB first
   await initDB();
 
-  // 2️⃣ Register routes
   await registerRoutes(httpServer, app);
 
-  // 3️⃣ Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -169,7 +174,6 @@ async function initDB() {
     throw err;
   });
 
-  // 4️⃣ Setup Vite only in development
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -177,7 +181,6 @@ async function initDB() {
     await setupVite(httpServer, app);
   }
 
-  // 5️⃣ Start server
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () =>
     log(`serving on port ${port}`)
