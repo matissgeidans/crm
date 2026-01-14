@@ -1,30 +1,22 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
-import session from "express-session";
-import { v4 as uuidv4 } from "uuid";
 import { Pool } from "pg";
-import dotenv from "dotenv";
+import { v4 as uuidv4 } from "uuid";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
-
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
 
-// ---------------- Middleware ----------------
-app.use(express.json({
-  verify: (req, _res, buf) => {
-    (req as any).rawBody = buf;
-  }
-}));
-app.use(express.urlencoded({ extended: false }));
+// ---------------- PostgreSQL Pool ----------------
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // Free tier
+});
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || "supersecret123",
-  resave: false,
-  saveUninitialized: true
-}));
+// ---------------- Middleware ----------------
+app.use(express.json({ verify: (req, _res, buf) => { (req as any).rawBody = buf; } }));
+app.use(express.urlencoded({ extended: false }));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -33,62 +25,46 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// ---------------- Request logging ----------------
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json.bind(res);
-  res.json = (bodyJson: any, ...args: any[]) => {
-    capturedJsonResponse = bodyJson;
-    return originalResJson(bodyJson, ...args);
+  let capturedJson: any = undefined;
+  const originalJson = res.json;
+  res.json = function(body, ...args) {
+    capturedJson = body;
+    return originalJson.apply(res, [body, ...args]);
   };
-
   res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+    if (req.path.startsWith("/api")) {
+      let logLine = `${req.method} ${req.path} ${res.statusCode} in ${Date.now() - start}ms`;
+      if (capturedJson) logLine += ` :: ${JSON.stringify(capturedJson)}`;
       log(logLine);
     }
   });
-
   next();
 });
 
-// ---------------- PostgreSQL Pool ----------------
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// ---------------- DB Initialization ----------------
+// ---------------- Initialize Database ----------------
 async function initDB() {
   const client = await pool.connect();
-
   try {
-    // Users table
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        email TEXT,
         first_name TEXT,
         last_name TEXT,
+        email TEXT,
         role TEXT DEFAULT 'driver',
         vehicle_name TEXT,
         profile_image_url TEXT,
         created_at TIMESTAMP DEFAULT now(),
         updated_at TIMESTAMP DEFAULT now()
       );
-    `);
 
-    // Trips table
-    await client.query(`
       CREATE TABLE IF NOT EXISTS trips (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        trip_number TEXT UNIQUE NOT NULL,
+        trip_number UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         trip_date TIMESTAMP NOT NULL,
         driver_id UUID REFERENCES users(id),
         client_id UUID,
@@ -101,54 +77,42 @@ async function initDB() {
         duration_hours NUMERIC,
         pickup_location TEXT,
         dropoff_location TEXT,
-        is_tala_riga BOOLEAN DEFAULT FALSE,
-        is_pieriga BOOLEAN DEFAULT FALSE,
-        has_rati BOOLEAN DEFAULT FALSE,
-        rati_type INTEGER,
-        has_tehniska_palidziba BOOLEAN DEFAULT FALSE,
-        has_darbs_nakti BOOLEAN DEFAULT FALSE,
+        is_tala_riga BOOLEAN,
+        is_pieriga BOOLEAN,
+        has_rati BOOLEAN,
+        rati_type INT,
+        has_tehniska_palidziba BOOLEAN,
+        has_darbs_nakti BOOLEAN,
         payment_type TEXT,
         cash_amount NUMERIC,
         extra_costs NUMERIC,
         extra_costs_description TEXT,
-        status TEXT DEFAULT 'draft',
+        status TEXT,
         notes TEXT,
         payment_notes TEXT,
-        cost_calculated NUMERIC,
-        created_at TIMESTAMP DEFAULT now(),
-        updated_at TIMESTAMP DEFAULT now()
+        cost_calculated NUMERIC
       );
     `);
 
-    // Check if demo user exists
-    const { rowCount } = await client.query(`SELECT id FROM users WHERE username=$1`, ['demo']);
+    const { rowCount } = await client.query(`SELECT * FROM users WHERE username='demo'`);
     if (rowCount === 0) {
-      await client.query(`
-        INSERT INTO users (username, password_hash, email, first_name, last_name, role, vehicle_name, profile_image_url)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      `, [
-        'demo',
-        'demo123', // 🔹 vēlāk drošāk: hash ar bcrypt
-        'demo@example.com',
-        'Demo',
-        'User',
-        'admin',
-        'DemoCar',
-        'https://via.placeholder.com/150'
-      ]);
+      await client.query(
+        `INSERT INTO users (username, password_hash, email, first_name, last_name, role, vehicle_name, profile_image_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        ["demo", "demo123", "demo@example.com", "Demo", "User", "admin", "Demo Vehicle", "https://via.placeholder.com/150"]
+      );
       console.log("✅ Demo user created: username=demo, password=demo123");
     } else {
       console.log("ℹ️ Demo user already exists");
     }
 
     console.log("✅ Database tables created or updated");
-
   } finally {
     client.release();
   }
 }
 
-// ---------------- Main ----------------
+// ---------------- Main Async IIFE ----------------
 (async () => {
   await initDB();
   await registerRoutes(httpServer, app);
@@ -169,6 +133,6 @@ async function initDB() {
 
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
-    log(`Server running on port ${port}`);
+    log(`serving on port ${port}`);
   });
 })();
