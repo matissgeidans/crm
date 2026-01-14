@@ -67,37 +67,75 @@ const pool = new Pool({
 async function initDB() {
   const client = await pool.connect();
   try {
+    // 1️⃣ Users table
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        firstName TEXT,
+        lastName TEXT,
         email TEXT,
-        first_name TEXT,
-        last_name TEXT,
-        profile_image_url TEXT,
         role TEXT DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT now()
+        vehicleName TEXT,
+        profileImageUrl TEXT,
+        createdAt TIMESTAMP DEFAULT now(),
+        updatedAt TIMESTAMP DEFAULT now()
       );
 
-      CREATE TABLE IF NOT EXISTS sessions (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        token TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT now()
+      CREATE TABLE IF NOT EXISTS trips (
+        tripNumber TEXT PRIMARY KEY,
+        tripDate TIMESTAMP,
+        driverId UUID REFERENCES users(id),
+        clientId UUID,
+        manualClientName TEXT,
+        vehicleId TEXT,
+        cargoName TEXT,
+        licensePlate TEXT,
+        weightCategory TEXT,
+        distanceKm NUMERIC,
+        durationHours NUMERIC,
+        pickupLocation TEXT,
+        dropoffLocation TEXT,
+        isTalaRiga BOOLEAN DEFAULT false,
+        isPieriga BOOLEAN DEFAULT false,
+        hasRati BOOLEAN DEFAULT false,
+        ratiType INTEGER,
+        hasTehniskaPalidziba BOOLEAN DEFAULT false,
+        hasDarbsNakti BOOLEAN DEFAULT false,
+        paymentType TEXT,
+        cashAmount NUMERIC,
+        extraCosts NUMERIC,
+        extraCostsDescription TEXT,
+        status TEXT DEFAULT 'melnraksts',
+        notes TEXT,
+        paymentNotes TEXT,
+        costCalculated NUMERIC,
+        createdAt TIMESTAMP DEFAULT now(),
+        updatedAt TIMESTAMP DEFAULT now()
       );
-
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT '';
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
     `);
+
+    // 2️⃣ Alter table to ensure all columns exist (safe for redeploy)
+    const userColumns = [
+      "username",
+      "password_hash",
+      "firstName",
+      "lastName",
+      "email",
+      "role",
+      "vehicleName",
+      "profileImageUrl",
+      "createdAt",
+      "updatedAt"
+    ];
+    for (const col of userColumns) {
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${col} TEXT`);
+    }
 
     console.log("✅ Database tables created or updated");
 
+    // 3️⃣ Demo user
     const { rowCount } = await client.query(
       `SELECT id FROM users WHERE username = $1`,
       ["demo"]
@@ -105,16 +143,17 @@ async function initDB() {
 
     if (rowCount === 0) {
       await client.query(
-        `INSERT INTO users (username, password_hash, email, first_name, last_name, profile_image_url, role)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO users (username, password_hash, firstName, lastName, email, role, vehicleName, profileImageUrl)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
         [
           "demo",
           "$2b$10$DemoHashForTestingPurposes",
-          "demo@example.com",
           "Demo",
           "User",
-          "https://via.placeholder.com/150",
-          "admin"
+          "demo@example.com",
+          "admin",
+          "DemoTruck",
+          "https://via.placeholder.com/150"
         ]
       );
       console.log("✅ Demo user created");
