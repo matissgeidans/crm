@@ -71,12 +71,13 @@ const pool = new Pool({
 async function initDB() {
   const client = await pool.connect();
   try {
-    // Izveido tabulas, ja to vēl nav
+    // Izveido tabulas, ja tās vēl nav
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        email TEXT,
         created_at TIMESTAMP DEFAULT now()
       );
 
@@ -87,8 +88,9 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT now()
       );
 
-      -- Droši pievieno password kolonnu, ja tās vēl nav vecajā users tabulā
+      -- Droši pievieno trūkstošās kolonnas vecajās tabulās
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
     `);
     console.log("✅ Database tables created or updated");
   } catch (e) {
