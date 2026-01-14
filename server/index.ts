@@ -2,13 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import pkg from "pg"; // native postgres
+const { Pool } = pkg;
 
-// --- Drizzle / PostgreSQL imports ---
-import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-kit/node";
-
-// ---------------- Setup Express ----------------
 const app = express();
 const httpServer = createServer(app);
 
@@ -65,20 +61,36 @@ app.use((req, res, next) => {
   next();
 });
 
-// ---------------- Drizzle / PostgreSQL setup ----------------
+// ---------------- PostgreSQL Pool ----------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }, // svarīgi Free tier
 });
 
-const db = drizzle(pool);
-
+// ---------------- Auto-create tables ----------------
 async function initDB() {
+  const client = await pool.connect();
   try {
-    await migrate(db); // izveido tabulas definētas Drizzle
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        token TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT now()
+      );
+    `);
     console.log("✅ Database tables created or already exist");
   } catch (e) {
     console.error("❌ Error creating tables", e);
+  } finally {
+    client.release();
   }
 }
 
