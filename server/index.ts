@@ -1,23 +1,39 @@
+// server/index.ts
 import express, { Request, Response, NextFunction } from "express";
-import { Pool } from "pg";
+import session from "express-session";
 import path from "path";
-import http from "http";
+import { fileURLToPath } from "url";
+import { Pool } from "pg";
+
+// ES modulī __dirname triks
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ---------------- App & Server ----------------
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ---------------- Session ----------------
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "demo-secret",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
 // ---------------- PostgreSQL Pool ----------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Free tier
+  ssl: { rejectUnauthorized: false }, // svarīgi Free tier
 });
 
-// ---------------- Express App ----------------
-const app = express();
-app.use(express.json());
-
-// ---------------- DB Init ----------------
+// ---------------- Auto-create / update tables & demo user ----------------
 async function initDB() {
   const client = await pool.connect();
   try {
-    // 1️⃣ Create users table
+    // Izveido tabulu users, ja nav
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -26,7 +42,7 @@ async function initDB() {
         email TEXT,
         first_name TEXT,
         last_name TEXT,
-        role TEXT,
+        role TEXT DEFAULT 'vaditajs',
         vehicle_name TEXT,
         profile_image_url TEXT,
         created_at TIMESTAMP DEFAULT now(),
@@ -34,7 +50,6 @@ async function initDB() {
       );
     `);
 
-    // 2️⃣ Create trips table
     await client.query(`
       CREATE TABLE IF NOT EXISTS trips (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,7 +58,7 @@ async function initDB() {
         driver_id UUID REFERENCES users(id),
         client_id UUID,
         manual_client_name TEXT,
-        vehicle_id TEXT,
+        vehicle_id UUID,
         cargo_name TEXT,
         license_plate TEXT,
         weight_category TEXT,
@@ -51,12 +66,12 @@ async function initDB() {
         duration_hours NUMERIC,
         pickup_location TEXT,
         dropoff_location TEXT,
-        is_tala_riga BOOLEAN DEFAULT false,
-        is_pieriga BOOLEAN DEFAULT false,
-        has_rati BOOLEAN DEFAULT false,
-        rati_type INTEGER,
-        has_tehniska_palidziba BOOLEAN DEFAULT false,
-        has_darbs_nakti BOOLEAN DEFAULT false,
+        is_tala_riga BOOLEAN,
+        is_pieriga BOOLEAN,
+        has_rati BOOLEAN,
+        rati_type INT,
+        has_tehniska_palidziba BOOLEAN,
+        has_darbs_nakti BOOLEAN,
         payment_type TEXT,
         cash_amount NUMERIC,
         extra_costs NUMERIC,
@@ -70,22 +85,13 @@ async function initDB() {
       );
     `);
 
-    // 3️⃣ Insert demo user if not exists
-    const res = await client.query(`SELECT COUNT(*) FROM users WHERE username='demo';`);
-    if (parseInt(res.rows[0].count, 10) === 0) {
+    // Pievieno demo lietotāju, ja nav
+    const { rowCount } = await client.query("SELECT * FROM users WHERE username = $1", ["demo"]);
+    if (rowCount === 0) {
       await client.query(
         `INSERT INTO users (username, password_hash, email, first_name, last_name, role, vehicle_name, profile_image_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [
-          "demo",
-          "demo123", // TODO: replace with hashed password in prod
-          "demo@example.com",
-          "Demo",
-          "User",
-          "admin",
-          "Demo Truck",
-          "https://via.placeholder.com/150"
-        ]
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        ["demo", "demo123", "demo@example.com", "Demo", "User", "vaditajs", "DemoTruck", "https://via.placeholder.com/150"]
       );
       console.log("✅ Demo user created: username=demo, password=demo123");
     } else {
@@ -98,32 +104,32 @@ async function initDB() {
   }
 }
 
-// ---------------- API Routes (example) ----------------
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" });
-});
-
-// ---------------- Serve React SPA ----------------
+// ---------------- React SPA ----------------
 const distPath = path.join(__dirname, "..", "dist", "public");
 app.use(express.static(distPath));
-
-// Catch-all for React router
-app.get("*", (_req: Request, res: Response) => {
+app.get("*", (_req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
-// ---------------- Error handler ----------------
+// ---------------- Error handling ----------------
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
-  res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  res.status(status).json({ error: message });
 });
 
-// ---------------- Start Server ----------------
+// ---------------- Main Async IIFE ----------------
 (async () => {
-  await initDB();
+  try {
+    await initDB();
 
-  const port = parseInt(process.env.PORT || "5000", 10);
-  http.createServer(app).listen(port, () => {
-    console.log(`🚀 Server running on port ${port}`);
-  });
+    const port = parseInt(process.env.PORT || "5000", 10);
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+    });
+  } catch (err) {
+    console.error("❌ Failed to start server", err);
+    process.exit(1);
+  }
 })();
